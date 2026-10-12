@@ -71,7 +71,7 @@ async function validateEndpoint(endpoint) {
   return url;
 }
 
-function makeHeaders(profileId, isPortfolio = false) {
+function makeHeaders(config = {}, isPortfolio = false) {
   const headers = { Accept: 'application/json' };
   if (isPortfolio) {
     const token = process.env.PRAMAAN_INTEGRATION_TOKEN;
@@ -79,21 +79,59 @@ function makeHeaders(profileId, isPortfolio = false) {
     headers.Authorization = `Bearer ${token}`;
     return headers;
   }
-  if (!profileId || profileId === 'none') return headers;
-  const match = /^profile-(\d{1,3})$/.exec(profileId);
-  const profile = match ? usableAuthProfiles()[Number(match[1]) - 1] : null;
-  if (!profile || !profile.type) throw new Error('Select a valid backend-configured authentication profile.');
-  if (profile.type === 'bearer' && profile.token) headers.Authorization = `Bearer ${profile.token}`;
-  else if (profile.type === 'apiKey' && /^[A-Za-z0-9-]{1,80}$/.test(profile.name || '') && profile.value) headers[profile.name] = profile.value;
-  else if (profile.type === 'basic' && profile.username && profile.password) {
-    headers.Authorization = `Basic ${Buffer.from(`${profile.username}:${profile.password}`).toString('base64')}`;
-  } else throw new Error('The selected REST API authentication profile is incomplete.');
+
+  const authMode = config.authMode || (config.authProfile && config.authProfile !== 'none' ? 'profile' : 'none');
+
+  if (authMode === 'profile' && config.authProfile && config.authProfile !== 'none') {
+    const match = /^profile-(\d{1,3})$/.exec(config.authProfile);
+    const profile = match ? usableAuthProfiles()[Number(match[1]) - 1] : null;
+    if (!profile || !profile.type) throw new Error('Select a valid backend-configured authentication profile.');
+    if (profile.type === 'bearer' && profile.token) headers.Authorization = `Bearer ${profile.token}`;
+    else if (profile.type === 'apiKey' && /^[A-Za-z0-9-]{1,80}$/.test(profile.name || '') && profile.value) headers[profile.name] = profile.value;
+    else if (profile.type === 'basic' && profile.username && profile.password) {
+      headers.Authorization = `Basic ${Buffer.from(`${profile.username}:${profile.password}`).toString('base64')}`;
+    } else throw new Error('The selected REST API authentication profile is incomplete.');
+  } else if (authMode === 'bearer') {
+    if (config.bearerToken) {
+      const cleanToken = String(config.bearerToken).trim();
+      if (cleanToken) headers.Authorization = `Bearer ${cleanToken}`;
+    }
+  } else if (authMode === 'apiKeyHeader') {
+    const keyName = String(config.apiKeyName || 'X-API-Key').trim();
+    const keyValue = String(config.apiKeyValue || '').trim();
+    if (keyName && keyValue) {
+      if (!/^[A-Za-z0-9-_]{1,80}$/.test(keyName)) {
+        throw new Error('Invalid API Key header name. Must be alphanumeric or hyphens/underscores.');
+      }
+      headers[keyName] = keyValue;
+    }
+  }
+
+  // Additional user-configured custom headers
+  if (Array.isArray(config.customHeaders)) {
+    for (const h of config.customHeaders) {
+      if (h && typeof h.key === 'string' && typeof h.value === 'string') {
+        const k = h.key.trim();
+        const v = h.value.trim();
+        if (k && /^[A-Za-z0-9-_]{1,80}$/.test(k) && !/^authorization$/i.test(k)) {
+          headers[k] = v;
+        }
+      }
+    }
+  }
+
   return headers;
 }
 
 function pathValue(value, path) {
-  if (!path) return value;
-  return path.split('.').reduce((current, key) => current == null ? undefined : current[key], value);
+  if (!path || !path.trim()) return value;
+  const parts = path.trim().split('.');
+  let current = value;
+  for (const part of parts) {
+    if (current == null) return undefined;
+    current = current[part];
+  }
+  return current;
 }
 
 function cleanText(value, maxLength) {
@@ -101,18 +139,72 @@ function cleanText(value, maxLength) {
   return String(value).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
 }
 
-async function fetchJson(endpoint, profileId, isPortfolio = false) {
-  const url = await validateEndpoint(endpoint);
+function buildRequestUrl(rawEndpoint, queryParams = [], authMode = 'none', apiKeyName = '', apiKeyValue = '') {
+  const url = new URL(rawEndpoint);
+
+  // Append user-configured query parameters
+  if (Array.isArray(queryParams)) {
+    for (const p of queryParams) {
+      if (p && typeof p.key === 'string' && p.key.trim()) {
+        url.searchParams.append(p.key.trim(), String(p.value || '').trim());
+      }
+    }
+  }
+
+  // Append query-based API key if specified
+  if (authMode === 'apiKeyQuery' && apiKeyName?.trim() && apiKeyValue?.trim()) {
+    url.searchParams.set(apiKeyName.trim(), apiKeyValue.trim());
+  }
+
+  return url;
+}
+
+async function fetchSinglePage(url, options, isPortfolio = false) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { headers: makeHeaders(profileId, isPortfolio), signal: controller.signal, redirect: 'error' });
-    if (response.status === 401 || response.status === 403) throw new Error(isPortfolio
-      ? 'The portfolio API rejected authentication. Check that PRAMAAN_INTEGRATION_TOKEN matches the portfolio server token.'
-      : 'The source API rejected authentication. Check its backend authentication profile.');
-    if (!response.ok) throw new Error(`The source API returned HTTP ${response.status}.`);
+    const fetchOptions = {
+      method: options.method || 'GET',
+      headers: options.headers,
+      signal: controller.signal,
+      redirect: 'error'
+    };
+
+    if (fetchOptions.method === 'POST') {
+      fetchOptions.headers['Content-Type'] = 'application/json';
+      if (options.body) {
+        fetchOptions.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+      }
+    }
+
+    const response = await fetch(url, fetchOptions);
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(isPortfolio
+        ? 'The portfolio API rejected authentication. Check that PRAMAAN_INTEGRATION_TOKEN matches the portfolio server token.'
+        : `The source API rejected authentication (HTTP ${response.status}). Check Bearer token, API key, or backend authentication profile.`);
+    }
+    if (response.status === 404) {
+      throw new Error('API endpoint returned 404 Not Found. Please check the URL path.');
+    }
+    if (response.status === 429) {
+      throw new Error('The source API rate limit exceeded (HTTP 429). Please wait before retrying.');
+    }
+    if (response.status >= 500) {
+      throw new Error(`The source API encountered an upstream error (HTTP ${response.status}).`);
+    }
+    if (!response.ok) {
+      throw new Error(`The source API returned HTTP ${response.status}.`);
+    }
+
     const contentType = response.headers.get('content-type') || '';
-    if (!contentType.toLowerCase().includes('application/json')) throw new Error('The source API did not return JSON.');
+    if (!contentType.toLowerCase().includes('application/json')) {
+      if (contentType.toLowerCase().includes('text/html')) {
+        throw new Error('The source URL returned an HTML web page instead of a JSON API response. Please verify the API endpoint URL.');
+      }
+      throw new Error(`The source API did not return JSON (Content-Type: ${contentType}).`);
+    }
+
     const reader = response.body?.getReader();
     if (!reader) throw new Error('The source API returned an empty response.');
     const chunks = [];
@@ -121,22 +213,111 @@ async function fetchJson(endpoint, profileId, isPortfolio = false) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.byteLength;
-      if (size > MAX_RESPONSE_BYTES) { await reader.cancel(); throw new Error('The source API response exceeds the 5 MB limit.'); }
+      if (size > MAX_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new Error('The source API response exceeds the 5 MB limit.');
+      }
       chunks.push(value);
     }
     const bytes = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
-    try { return JSON.parse(bytes.toString('utf8')); } catch { throw new Error('The source API returned invalid JSON.'); }
+    try {
+      return JSON.parse(bytes.toString('utf8'));
+    } catch {
+      throw new Error('The source API returned malformed or invalid JSON.');
+    }
   } catch (error) {
-    if (error.name === 'AbortError') throw new Error('The source API request timed out.');
-    if (error.message?.startsWith('The source API') || error.message?.startsWith('The portfolio API') || error.message?.startsWith('REST API') || error.message?.startsWith('Select ') || error.message?.startsWith('Portfolio ') || error.message?.startsWith('Private ')) throw error;
-    throw new Error('Could not connect to the source API. Check the endpoint and backend network access.');
-  } finally { clearTimeout(timer); }
+    if (error.name === 'AbortError') {
+      throw new Error('The source API request timed out (10s limit).');
+    }
+    if (error.message?.startsWith('The source') || error.message?.startsWith('Authentication failed') || error.message?.startsWith('API endpoint') || error.message?.startsWith('The portfolio API') || error.message?.startsWith('REST API') || error.message?.startsWith('Private ') || error.message?.startsWith('Enter a valid')) {
+      throw error;
+    }
+    throw new Error('Could not connect to the source API. Check endpoint, SSL/TLS, and backend network access.');
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
-function normalizeRecords(payload, mapping = {}, responsePath = '') {
-  const rows = pathValue(payload, responsePath);
-  if (!Array.isArray(rows)) throw new Error('The source response does not contain an array at the configured response path.');
-  if (rows.length > 5000) throw new Error('The source API returned more than 5,000 records. Narrow the source query.');
+async function fetchJsonWithPagination(config, isPortfolio = false) {
+  const method = config.method === 'POST' ? 'POST' : 'GET';
+  const headers = makeHeaders(config, isPortfolio);
+
+  // Validate initial raw endpoint
+  await validateEndpoint(config.endpoint);
+
+  const pagination = config.pagination || { enabled: false };
+  const maxPages = Math.min(Math.max(1, Number(pagination.maxPages) || 1), 20); // Maximum 20 pages
+  const pageSize = Math.min(Math.max(1, Number(pagination.pageSize) || 50), 500);
+
+  let accumulatedRows = [];
+  let currentPage = 1;
+
+  while (currentPage <= maxPages) {
+    let currentQueryParams = Array.isArray(config.queryParams) ? [...config.queryParams] : [];
+
+    if (pagination.enabled && currentPage > 1) {
+      if (pagination.type === 'offset') {
+        const offsetParam = pagination.offsetParam || 'offset';
+        const limitParam = pagination.limitParam || 'limit';
+        currentQueryParams.push({ key: offsetParam, value: String((currentPage - 1) * pageSize) });
+        currentQueryParams.push({ key: limitParam, value: String(pageSize) });
+      } else {
+        const pageParam = pagination.pageParam || 'page';
+        const limitParam = pagination.limitParam || 'pageSize';
+        currentQueryParams.push({ key: pageParam, value: String(currentPage) });
+        currentQueryParams.push({ key: limitParam, value: String(pageSize) });
+      }
+    } else if (pagination.enabled && currentPage === 1) {
+      const limitParam = pagination.limitParam || (pagination.type === 'offset' ? 'limit' : 'pageSize');
+      currentQueryParams.push({ key: limitParam, value: String(pageSize) });
+    }
+
+    const targetUrl = buildRequestUrl(
+      config.endpoint,
+      currentQueryParams,
+      config.authMode,
+      config.apiKeyName,
+      config.apiKeyValue
+    );
+
+    const payload = await fetchSinglePage(targetUrl, {
+      method,
+      headers,
+      body: method === 'POST' ? config.requestBody : undefined
+    }, isPortfolio);
+
+    const rows = pathValue(payload, config.responsePath || '');
+    if (!Array.isArray(rows)) {
+      if (currentPage === 1) {
+        throw new Error(`The source response does not contain an array at response path "${config.responsePath || '(root)'}".`);
+      }
+      break;
+    }
+
+    accumulatedRows.push(...rows);
+
+    // Stop if less than pageSize returned or limit reached
+    if (!pagination.enabled || rows.length < pageSize || accumulatedRows.length >= 5000) {
+      break;
+    }
+
+    currentPage++;
+  }
+
+  if (accumulatedRows.length > 5000) {
+    accumulatedRows = accumulatedRows.slice(0, 5000);
+  }
+
+  return accumulatedRows;
+}
+
+function normalizeRecords(rows, mapping = {}) {
+  if (!Array.isArray(rows)) {
+    throw new Error('The source response does not contain an array of records.');
+  }
+  if (rows.length > 5000) {
+    rows = rows.slice(0, 5000);
+  }
   const seenIds = new Set();
   const seenEmails = new Set();
   return rows.map((row, index) => {
@@ -174,14 +355,14 @@ function normalizeRecords(payload, mapping = {}, responsePath = '') {
 async function getPortfolioInquiries() {
   const endpoint = process.env.PORTFOLIO_INQUIRIES_API_URL;
   if (!endpoint) throw new Error('Portfolio connector is not configured on the PRAMAAN backend.');
-  const payload = await fetchJson(endpoint, null, true);
-  return normalizeRecords(payload, { idField: '_id', nameField: 'name', emailField: 'email' }, 'inquiries');
+  const rows = await fetchJsonWithPagination({ endpoint, responsePath: 'inquiries' }, true);
+  return normalizeRecords(rows, { idField: '_id', nameField: 'name', emailField: 'email' });
 }
 
 async function getRestRecords(config) {
   if (config.connector === 'portfolio') return getPortfolioInquiries();
-  const payload = await fetchJson(config.endpoint, config.authProfile || 'none');
-  return normalizeRecords(payload, config.mapping || {}, config.responsePath || '');
+  const rows = await fetchJsonWithPagination(config, false);
+  return normalizeRecords(rows, config.mapping || {});
 }
 
 async function testRestConnection(config) {
@@ -189,4 +370,15 @@ async function testRestConnection(config) {
   return { success: true, total: records.length, validCount: records.filter(row => row.valid).length };
 }
 
-module.exports = { getAuthProfiles, listAuthProfiles, getPortfolioInquiries, getRestRecords, testRestConnection, validateEndpoint };
+module.exports = {
+  getAuthProfiles,
+  listAuthProfiles,
+  getPortfolioInquiries,
+  getRestRecords,
+  testRestConnection,
+  validateEndpoint,
+  buildRequestUrl,
+  makeHeaders,
+  pathValue,
+  normalizeRecords
+};

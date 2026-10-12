@@ -80,7 +80,22 @@ export function EventWizard({ initialEvent, onComplete }) {
   const [importSummary, setImportSummary] = useState(null);
   const [previewRecords, setPreviewRecords] = useState([]);
   const [selectedPreviewIds, setSelectedPreviewIds] = useState([]);
-  const [sourceConfig, setSourceConfig] = useState({ connector: 'portfolio', endpoint: '', authProfile: 'none', responsePath: '', mapping: { idField: '_id', nameField: 'name', emailField: 'email' } });
+  const [sourceConfig, setSourceConfig] = useState({
+    connector: 'portfolio',
+    endpoint: '',
+    method: 'GET',
+    requestBody: '',
+    authMode: 'none',
+    authProfile: 'none',
+    bearerToken: '',
+    apiKeyName: '',
+    apiKeyValue: '',
+    customHeaders: [],
+    queryParams: [],
+    pagination: { enabled: false, type: 'page', pageParam: 'page', sizeParam: 'limit', pageSize: 50, maxPages: 5, offsetParam: 'offset' },
+    responsePath: '',
+    mapping: { idField: '_id', nameField: 'name', emailField: 'email' }
+  });
   const [restSourceConfig, setRestSourceConfig] = useState({ portfolioConfigured: false, externalMongoConfigured: false, authProfiles: [{ id: 'none', label: 'No authentication', type: 'none' }] });
   const [restTestState, setRestTestState] = useState(null);
   const [mongoTestState, setMongoTestState] = useState(null);
