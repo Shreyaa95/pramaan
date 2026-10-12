@@ -38,20 +38,41 @@ export function RecipientImportPreview({ records = [], selectedIds = [], onSelec
       <div className="max-h-80 overflow-auto rounded-xl border border-white/10 bg-[#0d0f15]">
         <table className="w-full text-left text-xs">
           <thead className="sticky top-0 bg-[#141620] text-gray-400">
-            <tr><th className="p-3">Select</th><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Status</th></tr>
+            <tr>
+              <th className="p-3">Select</th>
+              <th className="p-3">Recipient ID</th>
+              <th className="p-3">Name</th>
+              <th className="p-3">Email</th>
+              <th className="p-3">Status</th>
+            </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-gray-300">
             {records.map(record => (
               <tr key={record.sourceId} className="hover:bg-white/5">
-                <td className="p-3"><input type="checkbox" aria-label={`Select ${record.name || 'recipient'}`} disabled={!record.selectable} checked={selected.has(record.sourceId)} onChange={() => toggle(record.sourceId)} /></td>
+                <td className="p-3">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${record.name || 'recipient'}`}
+                    disabled={!record.selectable}
+                    checked={selected.has(record.sourceId)}
+                    onChange={() => toggle(record.sourceId)}
+                  />
+                </td>
+                <td className="p-3 font-mono text-[11px] text-gray-400">{record.recipientId || record.sourceId || '—'}</td>
                 <td className="p-3 font-semibold text-white">{record.name || '—'}</td>
                 <td className="p-3 font-mono">{record.email || '—'}</td>
                 <td className="p-3">
-                  {record.selectable ? <span className="inline-flex items-center gap-1 text-emerald-300"><CheckCircle2 className="h-3.5 w-3.5" /> Ready</span> : <span className="text-amber-300">{record.error || record.duplicateReason || 'Unavailable'}</span>}
+                  {record.selectable ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Ready
+                    </span>
+                  ) : (
+                    <span className="text-amber-300">{record.error || record.duplicateReason || 'Unavailable'}</span>
+                  )}
                 </td>
               </tr>
             ))}
-            {!records.length && <tr><td colSpan="4" className="p-6 text-center text-gray-500">No records to preview.</td></tr>}
+            {!records.length && <tr><td colSpan="5" className="p-6 text-center text-gray-500">No records to preview.</td></tr>}
           </tbody>
         </table>
       </div>
