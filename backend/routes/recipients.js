@@ -87,7 +87,7 @@ router.post('/parse-file', requireAuth, upload.single('dataFile'), async (req, r
     // Auto-detect likely mappings
     let suggestedName = headers.find(h => /name|student|participant|recipient/i.test(h)) || headers[0];
     let suggestedEmail = headers.find(h => /email|mail/i.test(h)) || '';
-    let suggestedId = headers.find(h => /id|roll|reg|number|code/i.test(h)) || '';
+    let suggestedId = headers.find(h => !/name|email|mail/i.test(h) && (/(^|[^a-z])id($|[^a-z])|roll|reg|number|code/i.test(h))) || '';
 
     return res.json({
       success: true,
