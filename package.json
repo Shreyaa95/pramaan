@@ -1,0 +1,23 @@
+{
+  "name": "pramaan",
+  "version": "1.0.0",
+  "description": "PRAMAAN (प्रमाण) - Certificate Generation and Automated Email Delivery Platform",
+  "scripts": {
+    "start": "node backend/server.js",
+    "backend": "cd backend && node server.js",
+    "frontend": "cd frontend && npm run dev",
+    "dev": "node start-dev.js",
+    "build": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "pramaan",
+    "certificates",
+    "automation",
+    "nodemailer",
+    "pdf-lib",
+    "mongodb",
+    "the-uniques"
+  ],
+  "author": "PRAMAAN Team",
+  "license": "ISC"
+}
