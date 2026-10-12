@@ -247,11 +247,11 @@ export const api = {
   },
 
   // MongoDB DataSource Inspection
-  async testMongoConnection() {
+  async testMongoConnection(dbName = null) {
     const res = await doFetch(`${API_BASE}/datasource/test-mongo`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-      body: JSON.stringify({})
+      body: JSON.stringify(dbName ? { dbName } : {})
     });
     return handleResponse(res);
   },

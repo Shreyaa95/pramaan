@@ -10,22 +10,41 @@ function maskUri(uri) {
   }
 }
 
-/**
- * Test external MongoDB connection
- */
-function getExternalMongoUri() {
-  const connectionUri = process.env.EXTERNAL_MONGODB_URI;
-  if (!connectionUri || !connectionUri.trim().startsWith('mongodb')) {
-    throw new Error('External MongoDB is not configured on the PRAMAAN backend. See backend environment setup.');
+function validateMongoUriScheme(uri) {
+  if (!uri || typeof uri !== 'string') {
+    throw new Error('Enter a valid MongoDB connection string.');
   }
-  return connectionUri;
+  const trimmed = uri.trim();
+  if (!trimmed.startsWith('mongodb://') && !trimmed.startsWith('mongodb+srv://')) {
+    throw new Error('Enter a valid MongoDB connection string. Must start with mongodb:// or mongodb+srv://');
+  }
+  return trimmed;
 }
 
-async function testMongoConnection() {
-  const connectionUri = getExternalMongoUri();
-  if (!connectionUri || !connectionUri.trim().startsWith('mongodb')) {
-    throw new Error('Invalid connection string. Must start with mongodb:// or mongodb+srv://');
+function getExternalMongoUri() {
+  const connectionUri = process.env.EXTERNAL_MONGODB_URI;
+  if (!connectionUri || !connectionUri.trim()) {
+    throw new Error('External MongoDB is not configured on the PRAMAAN backend. See backend environment setup.');
   }
+  return validateMongoUriScheme(connectionUri);
+}
+
+function sanitizeMongoError(err) {
+  const msg = err?.message || '';
+  if (/auth(enticat(ion|ed))? failed|bad auth|password/i.test(msg)) {
+    return 'Database authentication failed. Check the configured database user credentials.';
+  }
+  if (/not authorized|unauthorized|permission denied|requires authentication/i.test(msg)) {
+    return 'The configured database user does not have permission for this operation.';
+  }
+  if (/timed? ?out|server selection timed out|ENOTFOUND|ECONNREFUSED|getaddrinfo/i.test(msg)) {
+    return 'Could not reach the database. Check Atlas Network Access, firewall, and connection settings.';
+  }
+  return 'Could not connect to the backend-configured external MongoDB source.';
+}
+
+async function testMongoConnection(targetDbName = null) {
+  const connectionUri = getExternalMongoUri();
 
   let client;
   try {
@@ -34,17 +53,36 @@ async function testMongoConnection() {
       connectTimeoutMS: 6000
     });
     await client.connect();
-    const adminDb = client.db().admin();
-    const dbsResult = await adminDb.listDatabases();
-    const databases = dbsResult.databases.map(d => d.name);
+
+    // Verify connection liveness with ping without modifying anything
+    const defaultDb = client.db().databaseName || '';
+    const activeDbName = targetDbName || defaultDb || 'admin';
+    await client.db(activeDbName).command({ ping: 1 });
+
+    let databases = [];
+    let listingRestricted = false;
+    try {
+      const adminDb = client.db().admin();
+      const dbsResult = await adminDb.listDatabases();
+      databases = (dbsResult?.databases || []).map(d => d.name);
+    } catch (listErr) {
+      // Least-privilege users in MongoDB Atlas may not have 'listDatabases' role on admin
+      listingRestricted = true;
+      if (defaultDb) databases.push(defaultDb);
+      if (targetDbName && !databases.includes(targetDbName)) databases.push(targetDbName);
+    }
 
     return {
       connected: true,
       databases,
-      defaultDatabase: client.db().databaseName
+      defaultDatabase: defaultDb || targetDbName || '',
+      listingRestricted
     };
   } catch (err) {
-    throw new Error('Could not connect to the backend-configured external MongoDB source.');
+    if (err.message && err.message.startsWith('Enter a valid MongoDB') || err.message?.startsWith('External MongoDB')) {
+      throw err;
+    }
+    throw new Error(sanitizeMongoError(err));
   } finally {
     if (client) {
       await client.close().catch(() => {});
@@ -56,18 +94,23 @@ async function testMongoConnection() {
  * List collections in target database
  */
 async function listMongoCollections(dbName) {
+  if (!dbName || typeof dbName !== 'string' || !dbName.trim()) {
+    throw new Error('dbName is required.');
+  }
+  const cleanDbName = dbName.trim();
   const connectionUri = getExternalMongoUri();
   let client;
   try {
     client = new MongoClient(connectionUri, {
-      serverSelectionTimeoutMS: 6000
+      serverSelectionTimeoutMS: 6000,
+      connectTimeoutMS: 6000
     });
     await client.connect();
-    const db = client.db(dbName);
+    const db = client.db(cleanDbName);
     const collections = await db.listCollections().toArray();
     return collections.map(c => c.name);
   } catch (err) {
-    throw new Error('Could not list collections from the configured external MongoDB source.');
+    throw new Error(sanitizeMongoError(err));
   } finally {
     if (client) {
       await client.close().catch(() => {});
@@ -79,15 +122,19 @@ async function listMongoCollections(dbName) {
  * Sample documents from target collection to discover fields
  */
 async function sampleMongoData(dbName, collectionName, sampleSize = 5) {
+  if (!dbName || !collectionName) {
+    throw new Error('dbName and collectionName are required.');
+  }
   const connectionUri = getExternalMongoUri();
   let client;
   try {
     client = new MongoClient(connectionUri, {
-      serverSelectionTimeoutMS: 6000
+      serverSelectionTimeoutMS: 6000,
+      connectTimeoutMS: 6000
     });
     await client.connect();
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    const db = client.db(dbName.trim());
+    const collection = db.collection(collectionName.trim());
     const docs = await collection.find({}).limit(sampleSize).toArray();
 
     // Collect all field keys across sample docs
@@ -100,7 +147,8 @@ async function sampleMongoData(dbName, collectionName, sampleSize = 5) {
 
     return { availableFields: Array.from(fieldSet) };
   } catch (err) {
-    throw new Error('Could not preview data from the configured external MongoDB source.');
+    if (err.message?.startsWith('External MongoDB') || err.message?.startsWith('Enter a valid')) throw err;
+    throw new Error(sanitizeMongoError(err));
   } finally {
     if (client) {
       await client.close().catch(() => {});
@@ -112,15 +160,19 @@ async function sampleMongoData(dbName, collectionName, sampleSize = 5) {
  * Fetch records from MongoDB using admin's field mapping
  */
 async function fetchAndMapMongoRecords(dbName, collectionName, mapping, filter = {}, limit = 5000) {
+  if (!dbName || !collectionName) {
+    throw new Error('dbName and collectionName are required.');
+  }
   const connectionUri = getExternalMongoUri();
   let client;
   try {
     client = new MongoClient(connectionUri, {
-      serverSelectionTimeoutMS: 10000
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 6000
     });
     await client.connect();
-    const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    const db = client.db(dbName.trim());
+    const collection = db.collection(collectionName.trim());
 
     // Only project requested fields to minimize overhead and protect privacy
     const projection = { _id: 1 };
@@ -200,8 +252,8 @@ async function fetchAndMapMongoRecords(dbName, collectionName, mapping, filter =
       records: normalizedRecords
     };
   } catch (err) {
-    if (err.message?.startsWith('External MongoDB')) throw err;
-    throw new Error('Failed to fetch data from the configured external MongoDB source.');
+    if (err.message?.startsWith('External MongoDB') || err.message?.startsWith('Enter a valid')) throw err;
+    throw new Error(sanitizeMongoError(err));
   } finally {
     if (client) {
       await client.close().catch(() => {});
@@ -211,7 +263,9 @@ async function fetchAndMapMongoRecords(dbName, collectionName, mapping, filter =
 
 module.exports = {
   maskUri,
+  validateMongoUriScheme,
   getExternalMongoUri,
+  sanitizeMongoError,
   testMongoConnection,
   listMongoCollections,
   sampleMongoData,

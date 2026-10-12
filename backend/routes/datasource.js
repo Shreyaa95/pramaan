@@ -67,7 +67,8 @@ router.post('/rest-preview', requireAuth, async (req, res) => {
 
 router.post('/test-mongo', requireAuth, async (req, res) => {
   try {
-    const result = await testMongoConnection();
+    const targetDbName = req.body?.dbName ? String(req.body.dbName).trim() : null;
+    const result = await testMongoConnection(targetDbName);
     return res.json({ success: true, ...result });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message });

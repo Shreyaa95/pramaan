@@ -20,13 +20,49 @@ export function DatabaseConnector({ configured, connected, dbName, collections, 
         </label>
         <Button variant="secondary" onClick={onConnect} loading={loading}>{connected ? 'Refresh connection' : 'Test connection'}</Button>
       </div>
-      {connected && <>
-        <label className="block text-xs text-gray-300">Collection
-          <select value={collectionName} onChange={event => onCollectionChange(event.target.value)} className="mt-1 w-full rounded-lg border border-white/10 bg-[#181b26] px-3 py-2 text-white"><option value="">Choose collection</option>{collections.map(collection => <option key={collection} value={collection}>{collection}</option>)}</select>
-        </label>
-        <p className="text-[11px] text-gray-400">Available fields: {fields.join(', ') || 'Choose a collection to inspect fields.'}</p>
-        <Button variant="primary" onClick={onPreview} loading={loading} disabled={!collectionName}>Preview recipients</Button>
-      </>}
+      {connected && (
+        <>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs text-gray-300">Collection</label>
+              {collections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onCollectionChange('')}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 underline"
+                >
+                  Type manually
+                </button>
+              )}
+            </div>
+            {collections.length > 0 ? (
+              <select
+                value={collectionName}
+                onChange={event => onCollectionChange(event.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-[#181b26] px-3 py-2 text-white text-xs"
+              >
+                <option value="">Choose collection</option>
+                {collections.map(collection => (
+                  <option key={collection} value={collection}>{collection}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={collectionName}
+                onChange={event => onCollectionChange(event.target.value)}
+                placeholder="Enter authorized collection name"
+                className="w-full rounded-lg border border-white/10 bg-[#181b26] px-3 py-2 text-white text-xs"
+              />
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400">
+            Available fields: {fields.length > 0 ? fields.join(', ') : 'Select or specify a collection to discover schema.'}
+          </p>
+          <Button variant="primary" onClick={onPreview} loading={loading} disabled={!collectionName?.trim()}>
+            Preview recipients
+          </Button>
+        </>
+      )}
     </div>
   );
 }
