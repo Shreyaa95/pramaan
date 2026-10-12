@@ -140,19 +140,34 @@ function normalizeRecords(payload, mapping = {}, responsePath = '') {
   const seenIds = new Set();
   const seenEmails = new Set();
   return rows.map((row, index) => {
-    const sourceId = cleanText(pathValue(row, mapping.idField || '_id'), 200);
-    const name = cleanText(pathValue(row, mapping.nameField || 'name'), 120);
-    const email = cleanText(pathValue(row, mapping.emailField || 'email'), 254).toLowerCase();
+    const rawId = pathValue(row, mapping.idField || '_id');
+    const rawName = pathValue(row, mapping.nameField || 'name');
+    const rawEmail = pathValue(row, mapping.emailField || 'email');
+
+    const sourceId = cleanText(rawId, 200);
+    const name = cleanText(rawName, 120);
+    const email = cleanText(rawEmail, 254).toLowerCase();
+
     let error = '';
-    if (!sourceId) error = 'Missing source record ID';
+    if (!sourceId) error = 'Missing recipient ID';
     else if (!name) error = 'Missing recipient name';
-    else if (!EMAIL_REGEX.test(email)) error = 'Invalid email address';
-    else if (seenIds.has(sourceId)) error = 'Duplicate source record ID in response';
-    else if (seenEmails.has(email)) error = 'Duplicate email address in response';
+    else if (!email) error = 'Missing email address';
+    else if (!EMAIL_REGEX.test(email)) error = 'Invalid email address format';
+    else if (seenIds.has(sourceId)) error = 'Duplicate recipient ID in source response';
+    else if (seenEmails.has(email)) error = 'Duplicate email address in source response';
+
     if (sourceId) seenIds.add(sourceId);
     if (email) seenEmails.add(email);
     const duplicateReason = error?.startsWith('Duplicate ') ? error : '';
-    return { sourceId: sourceId || `invalid-${index}`, name, email, valid: !error, error, duplicate: Boolean(duplicateReason), duplicateReason };
+    return {
+      sourceId: sourceId || `invalid-${index + 1}`,
+      name,
+      email,
+      valid: !error,
+      error,
+      duplicate: Boolean(duplicateReason),
+      duplicateReason
+    };
   });
 }
 

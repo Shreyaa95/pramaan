@@ -250,7 +250,19 @@ router.post('/import-rest', requireAuth, async (req, res) => {
       if (importedKeys.has(sourceRecordKey)) { skipped.push({ sourceId: row.sourceId, reason: 'Source record already imported.' }); continue; }
       if (eventEmails.has(row.email) || selectedEmails.has(row.email)) { skipped.push({ sourceId: row.sourceId, email: row.email, reason: 'Email already exists in this event or selected set.' }); continue; }
       selectedEmails.add(row.email);
-      toInsert.push({ eventId, recipientId: `EXT-${crypto.randomUUID()}`, sourceRecordKey, sourceId: row.sourceId, sourceType: 'rest', name: row.name, email: row.email, extraData: {}, status: 'pending', createdAt: new Date().toISOString() });
+      const recipientId = `REST-${sourceHash.slice(0, 8)}-${row.sourceId}`;
+      toInsert.push({
+        eventId,
+        recipientId,
+        sourceRecordKey,
+        sourceId: row.sourceId,
+        sourceType: 'rest',
+        name: row.name,
+        email: row.email,
+        extraData: {},
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
     }
     if (toInsert.length) await db.recipients.insertMany(toInsert);
     return res.json({ success: true, importedCount: toInsert.length, skippedCount: skipped.length, skipped });
@@ -277,6 +289,7 @@ router.post('/import-mongo', requireAuth, async (req, res) => {
     const selectedEmails = new Set();
     const skipped = [];
     const toInsert = [];
+    const dbHash = crypto.createHash('sha256').update(`${dbName}.${collectionName}`).digest('hex').slice(0, 8);
     for (const row of selectedRows) {
       const sourceId = String(row.sourceId);
       const sourceRecordKey = `mongo:${dbName}.${collectionName}:${sourceId}`;
@@ -285,7 +298,19 @@ router.post('/import-mongo', requireAuth, async (req, res) => {
       if (importedKeys.has(sourceRecordKey)) { skipped.push({ sourceId, reason: 'Source record already imported.' }); continue; }
       if (eventEmails.has(email) || selectedEmails.has(email)) { skipped.push({ sourceId, email, reason: 'Email already exists in this event or selected set.' }); continue; }
       selectedEmails.add(email);
-      toInsert.push({ eventId, recipientId: `EXT-${crypto.randomUUID()}`, sourceRecordKey, sourceId, sourceType: 'mongo', name: String(row.name).trim().slice(0, 120), email, extraData: {}, status: 'pending', createdAt: new Date().toISOString() });
+      const recipientId = row.recipientId && row.recipientId !== sourceId ? row.recipientId : `MGO-${dbHash}-${sourceId}`;
+      toInsert.push({
+        eventId,
+        recipientId,
+        sourceRecordKey,
+        sourceId,
+        sourceType: 'mongo',
+        name: String(row.name).trim().slice(0, 120),
+        email,
+        extraData: row.extraData || {},
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
     }
     if (toInsert.length) await db.recipients.insertMany(toInsert);
     return res.json({ success: true, importedCount: toInsert.length, skippedCount: skipped.length, skipped });

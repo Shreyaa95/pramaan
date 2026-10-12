@@ -48,18 +48,50 @@ router.post('/rest-preview', requireAuth, async (req, res) => {
     const allRecipients = await store.recipients.find({});
     const importedSources = new Set(allRecipients.map(row => row.sourceRecordKey).filter(Boolean));
     const eventEmails = new Set(allRecipients.filter(row => row.eventId === eventId).map(row => String(row.email || '').toLowerCase()));
+    const eventIds = new Set(allRecipients.filter(row => row.eventId === eventId).map(row => String(row.recipientId || '')));
     const emailsInResponse = new Set();
+    const idsInResponse = new Set();
+
     const preview = records.map(row => {
       const sourceIdentity = req.body.connector === 'portfolio' ? 'portfolio' : new URL(req.body.endpoint).origin + new URL(req.body.endpoint).pathname;
       const sourceRecordKey = `rest:${crypto.createHash('sha256').update(sourceIdentity).digest('hex').slice(0, 24)}:${row.sourceId}`;
       let duplicateReason = row.duplicateReason || '';
-      if (row.valid && importedSources.has(sourceRecordKey)) duplicateReason = 'This source record was already imported.';
-      else if (row.valid && eventEmails.has(row.email)) duplicateReason = 'This email already exists in the selected event.';
-      else if (row.valid && emailsInResponse.has(row.email)) duplicateReason = 'Duplicate email in source response.';
-      if (row.valid) emailsInResponse.add(row.email);
-      return { ...row, sourceRecordKey, duplicate: Boolean(duplicateReason), duplicateReason, selectable: row.valid && !duplicateReason };
+      if (!duplicateReason && row.valid) {
+        if (importedSources.has(sourceRecordKey)) duplicateReason = 'This source record was already imported.';
+        else if (eventIds.has(row.sourceId)) duplicateReason = 'Recipient ID already exists in this event.';
+        else if (eventEmails.has(row.email)) duplicateReason = 'Email already exists in this event.';
+        else if (emailsInResponse.has(row.email)) duplicateReason = 'Duplicate email address in source response.';
+        else if (idsInResponse.has(row.sourceId)) duplicateReason = 'Duplicate recipient ID in source response.';
+      }
+      if (row.valid) {
+        emailsInResponse.add(row.email);
+        idsInResponse.add(row.sourceId);
+      }
+      const isDuplicate = Boolean(duplicateReason);
+      const isSelectable = Boolean(row.valid && !isDuplicate);
+      return {
+        ...row,
+        sourceRecordKey,
+        duplicate: isDuplicate,
+        duplicateReason,
+        selectable: isSelectable
+      };
     });
-    return res.json({ success: true, total: preview.length, validCount: preview.filter(row => row.valid).length, duplicateCount: preview.filter(row => row.duplicate).length, records: preview });
+
+    const validCount = preview.filter(row => row.valid).length;
+    const invalidCount = preview.filter(row => !row.valid).length;
+    const duplicateCount = preview.filter(row => row.duplicate).length;
+    const selectableCount = preview.filter(row => row.selectable).length;
+
+    return res.json({
+      success: true,
+      total: preview.length,
+      validCount,
+      invalidCount,
+      duplicateCount,
+      selectableCount,
+      records: preview
+    });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message || 'Could not preview the REST source.' });
   }
@@ -108,16 +140,58 @@ router.post('/mongo-preview', requireAuth, async (req, res) => {
     const allRecipients = await store.recipients.find({});
     const imported = new Set(allRecipients.map(row => row.sourceRecordKey).filter(Boolean));
     const eventEmails = new Set(allRecipients.filter(row => row.eventId === eventId).map(row => String(row.email || '').toLowerCase()));
+    const eventIds = new Set(allRecipients.filter(row => row.eventId === eventId).map(row => String(row.recipientId || '')));
     const seenEmails = new Set();
+    const seenIds = new Set();
+
     const records = fetched.records.map((row, index) => {
-      const sourceId = String(row.sourceId || `row-${index}`);
-      const sourceRecordKey = `mongo:${dbName}.${collectionName}:${sourceId}`;
+      const sourceId = String(row.sourceId || `row-${index + 1}`).trim();
+      const sourceRecordKey = `mongo:${dbName.trim()}.${collectionName.trim()}:${sourceId}`;
       const email = String(row.email || '').trim().toLowerCase();
-      const duplicateReason = imported.has(sourceRecordKey) ? 'This source record was already imported.' : (eventEmails.has(email) ? 'This email already exists in the selected event.' : (seenEmails.has(email) ? 'Duplicate email in source response.' : ''));
-      if (email) seenEmails.add(email);
-      return { sourceId, sourceRecordKey, name: String(row.name || '').trim(), email, valid: Boolean(row.isValid), error: row.validationError || '', duplicate: Boolean(duplicateReason), duplicateReason, selectable: Boolean(row.isValid && !duplicateReason) };
+
+      let duplicateReason = '';
+      if (row.isValid) {
+        if (imported.has(sourceRecordKey)) duplicateReason = 'This source record was already imported.';
+        else if (eventIds.has(row.recipientId || sourceId)) duplicateReason = 'Recipient ID already exists in this event.';
+        else if (eventEmails.has(email)) duplicateReason = 'This email already exists in the selected event.';
+        else if (seenEmails.has(email)) duplicateReason = 'Duplicate email in source response.';
+        else if (seenIds.has(sourceId)) duplicateReason = 'Duplicate source ID in collection.';
+      }
+
+      if (email && row.isValid) seenEmails.add(email);
+      if (sourceId && row.isValid) seenIds.add(sourceId);
+
+      const isDuplicate = Boolean(duplicateReason);
+      const isSelectable = Boolean(row.isValid && !isDuplicate);
+
+      return {
+        sourceId,
+        sourceRecordKey,
+        recipientId: row.recipientId || sourceId,
+        name: String(row.name || '').trim(),
+        email,
+        valid: Boolean(row.isValid),
+        error: row.validationError || '',
+        duplicate: isDuplicate,
+        duplicateReason,
+        selectable: isSelectable
+      };
     });
-    return res.json({ success: true, total: fetched.totalFound, records });
+
+    const validCount = records.filter(r => r.valid).length;
+    const invalidCount = records.filter(r => !r.valid).length;
+    const duplicateCount = records.filter(r => r.duplicate).length;
+    const selectableCount = records.filter(r => r.selectable).length;
+
+    return res.json({
+      success: true,
+      total: fetched.totalFound,
+      validCount,
+      invalidCount,
+      duplicateCount,
+      selectableCount,
+      records
+    });
   } catch (err) {
     return res.status(400).json({ success: false, error: err.message || 'Could not preview the configured MongoDB source.' });
   }

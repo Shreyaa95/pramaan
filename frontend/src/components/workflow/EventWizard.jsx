@@ -171,6 +171,7 @@ export function EventWizard({ initialEvent, onComplete }) {
   useEffect(() => {
     if (dataSourceType !== 'csv' || !parsedFileData?.allRows) return;
     const existingEmails = new Set(recipients.map(recipient => String(recipient.email || '').toLowerCase()));
+    const existingIds = new Set(recipients.map(recipient => String(recipient.recipientId || '').trim()).filter(Boolean));
     const seenEmails = new Set();
     const seenIds = new Set();
     const rows = parsedFileData.allRows.map((row, index) => {
@@ -180,13 +181,14 @@ export function EventWizard({ initialEvent, onComplete }) {
       const recipientId = String(csvMapping.recipientIdField ? row[csvMapping.recipientIdField] || '' : '').trim();
       let error = '';
       if (!name) error = 'Missing recipient name';
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Invalid email address';
+      else if (!email) error = 'Missing email address';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) error = 'Invalid email address format';
       let duplicateReason = '';
       if (!error && (existingEmails.has(email) || seenEmails.has(email))) duplicateReason = 'Email already exists in this event or selected file.';
-      else if (!error && recipientId && seenIds.has(recipientId)) duplicateReason = 'Duplicate recipient ID in file.';
+      else if (!error && recipientId && (existingIds.has(recipientId) || seenIds.has(recipientId))) duplicateReason = 'Recipient ID already exists in this event or file.';
       if (email) seenEmails.add(email);
       if (recipientId) seenIds.add(recipientId);
-      return { sourceId, name, email, valid: !error, error, duplicate: Boolean(duplicateReason), duplicateReason, selectable: !error && !duplicateReason };
+      return { sourceId, recipientId, name, email, valid: !error, error, duplicate: Boolean(duplicateReason), duplicateReason, selectable: !error && !duplicateReason };
     });
     setPreviewRecords(rows);
     setSelectedPreviewIds(rows.filter(row => row.selectable).map(row => row.sourceId));
