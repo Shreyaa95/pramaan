@@ -22,8 +22,8 @@ async function seedInitialData() {
   if (templateCount === 0) {
     const sampleTemplates = [
       {
-        name: 'The Uniques IdeaJam 2026 Certificate',
-        description: 'Official sleek dark-mode certificate with Uniques crimson accent borders and geometric seal.',
+        name: 'Global Excellence & Achievement Certificate',
+        description: 'Official sleek dark-mode certificate with crimson accent borders and geometric seal.',
         width: 842,
         height: 595,
         backgroundType: 'canvas',
@@ -39,7 +39,7 @@ async function seedInitialData() {
             fontWeight: 'bold',
             color: '#ca0019',
             align: 'center',
-            sampleValue: 'THE UNIQUES COMMUNITY'
+            sampleValue: 'GLOBAL CERTIFICATION AUTHORITY'
           },
           {
             id: 'f2',
@@ -213,17 +213,17 @@ async function seedInitialData() {
   if (eventCount === 0) {
     const defaultTemplate = await db.templates.findOne({ isDefault: true });
     const event = await db.events.insert({
-      name: 'IdeaJam 2026 Hackathon',
-      description: 'The Uniques annual flagship tech showcase and competitive hackathon.',
+      name: 'Global Innovation & Technology Summit 2026',
+      description: 'Annual global technology showcase and professional credentialing program.',
       eventDate: 'October 15, 2026',
-      organizationName: 'The Uniques Community',
+      organizationName: 'Global Certification Authority',
       templateId: defaultTemplate?._id,
-      certificatePrefix: 'IJ26',
+      certificatePrefix: 'G26',
       emailConfig: {
-        subject: 'Your Certificate – IdeaJam 2026 Hackathon',
-        body: 'Hi {{recipientName}},\n\nYour certificate for IdeaJam 2026 Hackathon is attached to this email.\n\nRegards,\nThe Uniques Community',
-        senderName: 'The Uniques Community',
-        senderEmail: 'certifications@theuniques.in'
+        subject: 'Your Certificate – Global Innovation Summit 2026',
+        body: 'Hi {{recipientName}},\n\nYour official certificate for Global Innovation & Technology Summit 2026 is attached to this email.\n\nRegards,\nGlobal Certification Authority',
+        senderName: 'Global Certification Authority',
+        senderEmail: 'credentials@globalcert.org'
       },
       createdAt: new Date().toISOString()
     });

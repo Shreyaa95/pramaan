@@ -521,8 +521,8 @@ router.post('/preview-sample', requireAuth, async (req, res) => {
     }
 
     const dummyEvent = {
-      name: sampleData?.eventName || targetEvent?.name || 'The Uniques Hackathon 2026',
-      organizationName: sampleData?.organizationName || targetEvent?.organizationName || 'The Uniques Community',
+      name: sampleData?.eventName || targetEvent?.name || 'Global Innovation Summit 2026',
+      organizationName: sampleData?.organizationName || targetEvent?.organizationName || 'Global Certification Authority',
       eventDate: sampleData?.date || targetEvent?.eventDate || 'October 15, 2026'
     };
 

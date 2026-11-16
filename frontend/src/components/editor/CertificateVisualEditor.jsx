@@ -26,7 +26,7 @@ const AVAILABLE_FIELD_PRESETS = [
   { key: 'eventName', label: 'Event Name', defaultFont: 'Helvetica', defaultSize: 24, defaultWeight: 'bold', defaultColor: '#111827', sample: 'IdeaJam 2026 Hackathon' },
   { key: 'certificateId', label: 'Certificate ID', defaultFont: 'Courier', defaultSize: 12, defaultWeight: 'bold', defaultColor: '#6b7280', sample: 'CERT-2026-0001' },
   { key: 'date', label: 'Issue Date', defaultFont: 'Helvetica', defaultSize: 12, defaultWeight: 'normal', defaultColor: '#6b7280', sample: 'October 15, 2026' },
-  { key: 'organizationName', label: 'Organization Name', defaultFont: 'Helvetica', defaultSize: 20, defaultWeight: 'bold', defaultColor: '#ca0019', sample: 'THE UNIQUES COMMUNITY' },
+  { key: 'organizationName', label: 'Organization Name', defaultFont: 'Helvetica', defaultSize: 20, defaultWeight: 'bold', defaultColor: '#ca0019', sample: 'GLOBAL CERTIFICATION AUTHORITY' },
   { key: 'position', label: 'Role / Track / Achievement', defaultFont: 'Helvetica', defaultSize: 14, defaultWeight: 'normal', defaultColor: '#4b5563', sample: 'Winner - Web & Agentic AI Track' }
 ];
 
@@ -98,7 +98,7 @@ export function CertificateVisualEditor({ template, onSave, isSaving = false }) 
         {
           recipientName: 'Rahul Kumar',
           eventName: 'IdeaJam 2026 Hackathon',
-          organizationName: 'The Uniques Community',
+          organizationName: 'Global Certification Authority',
           date: 'October 15, 2026',
           position: 'Special Recognition Award',
           certificateId: 'CERT-PREVIEW-2026'

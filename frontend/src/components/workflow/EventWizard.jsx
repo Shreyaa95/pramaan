@@ -58,7 +58,7 @@ export function EventWizard({ initialEvent, onComplete }) {
     name: initialEvent?.name || '',
     description: initialEvent?.description || '',
     eventDate: initialEvent?.eventDate || new Date().toISOString().split('T')[0],
-    organizationName: initialEvent?.organizationName || 'The Uniques Community',
+    organizationName: initialEvent?.organizationName || (typeof window !== 'undefined' ? localStorage.getItem('smartcert_org_name') : null) || 'Global Certification Authority',
     certificatePrefix: initialEvent?.certificatePrefix || 'CERT',
     templateId: initialEvent?.templateId || null
   });
@@ -881,7 +881,7 @@ export function EventWizard({ initialEvent, onComplete }) {
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. The Uniques Community"
+                    placeholder="e.g. Global Certification Authority"
                     value={eventData.organizationName}
                     onChange={(e) => setEventData({ ...eventData, organizationName: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl bg-[#181b26] border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-[#ca0019]"
@@ -1732,7 +1732,7 @@ export function EventWizard({ initialEvent, onComplete }) {
                   </label>
                   <input
                     type="email"
-                    placeholder="e.g. certifications@theuniques.in"
+                    placeholder="e.g. credentials@globalcert.org"
                     value={emailConfig.senderEmail}
                     onChange={(e) => setEmailConfig({ ...emailConfig, senderEmail: e.target.value })}
                     className="w-full px-4 py-2 rounded-xl bg-[#181b26] border border-white/10 text-white focus:outline-none focus:border-[#ca0019]"

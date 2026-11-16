@@ -188,7 +188,7 @@ export function PublicCertificateView({ certificateId }) {
 
       {/* Footer */}
       <footer className="border-t border-white/10 py-6 text-center text-xs text-gray-500">
-        Issued via PRAMAAN (प्रमाण) Automated Certificate Platform &bull; The Uniques Community Ecosystem
+        Issued via PRAMAAN (प्रमाण) Automated Certificate Platform &bull; Global Digital Credential Infrastructure
       </footer>
     </div>
   );

@@ -11,16 +11,39 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Layers
+  Layers,
+  Globe,
+  ExternalLink,
+  Download,
+  Terminal,
+  Building2,
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useBranding } from '../context/BrandingContext';
 
 export function SettingsView() {
   const { showToast } = useToast();
+  const { orgName, tagline, subtitle, supportEmail, updateBranding, resetBranding } = useBranding();
+
+  // Branding Customization State
+  const [localOrgName, setLocalOrgName] = useState(orgName);
+  const [localTagline, setLocalTagline] = useState(tagline);
+  const [localSubtitle, setLocalSubtitle] = useState(subtitle);
+  const [localSupportEmail, setLocalSupportEmail] = useState(supportEmail);
+  const [savingBranding, setSavingBranding] = useState(false);
+
+  useEffect(() => {
+    setLocalOrgName(orgName);
+    setLocalTagline(tagline);
+    setLocalSubtitle(subtitle);
+    setLocalSupportEmail(supportEmail);
+  }, [orgName, tagline, subtitle, supportEmail]);
 
   // SMTP State
   const [smtpConfig, setSmtpConfig] = useState({
@@ -60,6 +83,30 @@ export function SettingsView() {
     } finally {
       setLoadingSmtp(false);
     }
+  };
+
+  const handleSaveBranding = (e) => {
+    e.preventDefault();
+    setSavingBranding(true);
+    updateBranding({
+      orgName: localOrgName.trim() || 'Global Certification Authority',
+      tagline: localTagline.trim() || 'Global Credential Network',
+      subtitle: localSubtitle.trim() || 'Enterprise Digital Credential Infrastructure',
+      supportEmail: localSupportEmail.trim() || 'credentials@globalcert.org'
+    });
+    setTimeout(() => {
+      setSavingBranding(false);
+      showToast('Global organization & branding identity updated successfully!', 'success');
+    }, 200);
+  };
+
+  const handleResetBranding = () => {
+    resetBranding();
+    setLocalOrgName('Global Certification Authority');
+    setLocalTagline('Global Credential Network');
+    setLocalSubtitle('Enterprise Digital Credential Infrastructure');
+    setLocalSupportEmail('credentials@globalcert.org');
+    showToast('Branding reset to Global Credential standard defaults.', 'info');
   };
 
   const handleSaveSmtp = async (e) => {
@@ -173,14 +220,120 @@ export function SettingsView() {
           Infrastructure & Protocol
         </div>
         <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2 font-display">
-          System & Credentials Configuration
+          System & Organization Configuration
         </h1>
         <p className="text-xs text-gray-400 mt-1">
-          Configure backend transport protocols and external database integrations securely. Credentials are never logged or leaked.
+          Customize your global organization branding, backend transport protocols, and database integrations.
         </p>
       </div>
 
-      {/* SECTION 1: SMTP SETTINGS */}
+      {/* SECTION 1: GLOBAL ORGANIZATION & BRANDING IDENTITY */}
+      <Card glowingTop className="space-y-6 border-[#27272a] bg-[#121215]">
+        <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-white font-display">
+                Global Organization & Ecosystem Identity
+              </h2>
+              <p className="text-xs text-gray-400">
+                Define the global organization name and platform tagline displayed across certificates, dashboard, and login.
+              </p>
+            </div>
+          </div>
+          <Badge variant="accent">Global Identity</Badge>
+        </div>
+
+        <form onSubmit={handleSaveBranding} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-300 block mb-1">
+                Issuing Organization Name
+              </label>
+              <input
+                type="text"
+                value={localOrgName}
+                onChange={(e) => setLocalOrgName(e.target.value)}
+                placeholder="e.g. Global Certification Authority or Your University"
+                className="w-full px-3.5 py-2 text-xs bg-[#18181b] border border-[#27272a] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ca0019]"
+                required
+              />
+              <span className="text-[10px] text-gray-500 mt-1 block">
+                Default authority name assigned to newly created batches and certificate previews.
+              </span>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-300 block mb-1">
+                Ecosystem / Network Tagline
+              </label>
+              <input
+                type="text"
+                value={localTagline}
+                onChange={(e) => setLocalTagline(e.target.value)}
+                placeholder="e.g. Global Credential Network"
+                className="w-full px-3.5 py-2 text-xs bg-[#18181b] border border-[#27272a] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ca0019]"
+                required
+              />
+              <span className="text-[10px] text-gray-500 mt-1 block">
+                Shown on the hero badges, console headers, and public portal footer.
+              </span>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-300 block mb-1">
+                Platform Mission Subtitle
+              </label>
+              <input
+                type="text"
+                value={localSubtitle}
+                onChange={(e) => setLocalSubtitle(e.target.value)}
+                placeholder="e.g. Enterprise Digital Credential Infrastructure"
+                className="w-full px-3.5 py-2 text-xs bg-[#18181b] border border-[#27272a] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ca0019]"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-gray-300 block mb-1">
+                Default Sender & Support Email
+              </label>
+              <input
+                type="email"
+                value={localSupportEmail}
+                onChange={(e) => setLocalSupportEmail(e.target.value)}
+                placeholder="e.g. credentials@globalcert.org"
+                className="w-full px-3.5 py-2 text-xs bg-[#18181b] border border-[#27272a] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#ca0019]"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-[#27272a]">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetBranding}
+              icon={RotateCcw}
+            >
+              Reset to Global Defaults
+            </Button>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={savingBranding}
+              icon={Save}
+            >
+              Save Organization Branding
+            </Button>
+          </div>
+        </form>
+      </Card>
+
+      {/* SECTION 2: SMTP SETTINGS */}
       <Card glowingTop className="space-y-6 border-[#27272a] bg-[#121215]">
         <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
           <div className="flex items-center gap-3">
@@ -473,6 +626,80 @@ export function SettingsView() {
             </div>
           )}
         </form>
+      </Card>
+
+      {/* SECTION 4: PRAMAAN BROWSER EXTENSION INTEGRATION */}
+      <Card glowingTop className="space-y-6 border-[#27272a] bg-[#121215]">
+        <div className="flex items-center justify-between border-b border-[#27272a] pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#ca0019]/20 border border-[#ca0019]/30 flex items-center justify-center text-[#ef4444]">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-white font-display">
+                PRAMAAN Direct Email & Certificate Extension (Chromium / Chrome / Edge / Brave)
+              </h2>
+              <p className="text-xs text-gray-400">
+                Send personalized PDF certificates directly to recipients via email from any browser tab without opening this website.
+              </p>
+            </div>
+          </div>
+          <Badge variant="accent">Email Dispatcher</Badge>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-[#18181b] border border-white/5 space-y-3">
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider font-display">
+              Installation in 3 Simple Steps:
+            </h3>
+            <ol className="list-decimal list-inside text-xs text-gray-300 space-y-2">
+              <li>
+                Open <span className="font-mono text-[#ef4444] bg-black/40 px-1.5 py-0.5 rounded">chrome://extensions</span> or <span className="font-mono text-[#ef4444] bg-black/40 px-1.5 py-0.5 rounded">edge://extensions</span> in your browser.
+              </li>
+              <li>
+                Toggle <strong className="text-white">"Developer mode"</strong> in the top-right corner.
+              </li>
+              <li>
+                Click <strong className="text-white">"Load unpacked"</strong> and select the directory:
+                <div className="mt-1 font-mono text-[11px] text-gray-300 bg-black/60 p-2 rounded-lg border border-white/10 select-all">
+                  C:\smartcertificate\extension
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-[#141418] border border-[#27272a]">
+              <div className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                <Mail className="w-4 h-4 text-[#ef4444]" />
+                Direct Email Dispatch
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Type recipient name & email in the extension popup and click send. Generates the PDF & sends the email with zero website navigation.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#141418] border border-[#27272a]">
+              <div className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                <Send className="w-4 h-4 text-emerald-400" />
+                Bulk Batch Delivery
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Dispatch an entire batch of certificates or retry failed deliveries with 1 click directly from the extension toolbar.
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#141418] border border-[#27272a]">
+              <div className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-blue-400" />
+                Instant Verifier & Scanner
+              </div>
+              <p className="text-[11px] text-gray-400">
+                Highlight any email on Google Sheets, right-click & select "Send Certificate via PRAMAAN" for instant dispatch.
+              </p>
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );

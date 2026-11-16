@@ -22,9 +22,11 @@ import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useBranding } from '../context/BrandingContext';
 
 export function EventsView({ onSelectEvent, onNavigate }) {
   const { showToast } = useToast();
+  const { orgName } = useBranding();
   const [events, setEvents] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export function EventsView({ onSelectEvent, onNavigate }) {
     name: '',
     description: '',
     eventDate: new Date().toISOString().split('T')[0],
-    organizationName: 'The Uniques Community',
+    organizationName: orgName || 'Global Certification Authority',
     certificatePrefix: 'CERT',
     templateId: ''
   });
@@ -68,7 +70,7 @@ export function EventsView({ onSelectEvent, onNavigate }) {
       name: '',
       description: '',
       eventDate: new Date().toISOString().split('T')[0],
-      organizationName: 'The Uniques Community',
+      organizationName: orgName || 'Global Certification Authority',
       certificatePrefix: 'CERT',
       templateId: templates[0]?._id || ''
     });

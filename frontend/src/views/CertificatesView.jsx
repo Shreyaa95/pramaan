@@ -17,6 +17,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { Modal } from '../components/common/Modal';
+import { HolographicCertificateCard } from '../components/common/HolographicCertificateCard';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
 
@@ -163,66 +164,14 @@ export function CertificatesView({ activeEvent, events, onSelectEvent, onNavigat
           </Button>
         </Card>
       ) : viewMode === 'grid' ? (
-        /* Grid / Card View */
+        /* Holographic 3D Tilt Grid View */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
           {filtered.map((cert) => (
-            <Card
+            <HolographicCertificateCard
               key={cert._id}
-              hoverEffect
-              glowingTop
-              className="p-5 flex flex-col justify-between space-y-4 border-[#27272a] bg-[#121215]"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="font-mono text-xs font-bold text-[#ef4444]">{cert.certificateId}</span>
-                  {cert.status === 'sent' ? (
-                    <Badge variant="success" dot size="xs">Sent</Badge>
-                  ) : (
-                    <Badge variant="info" dot size="xs">Ready</Badge>
-                  )}
-                </div>
-
-                <div className="aspect-[842/595] rounded-xl overflow-hidden bg-black/40 border border-[#27272a] mb-3 flex items-center justify-center relative group/preview">
-                  <FileText className="w-12 h-12 text-[#ef4444] opacity-50" />
-                  <div className="absolute inset-0 bg-black/70 backdrop-blur-xs opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button
-                      size="xs"
-                      variant="primary"
-                      onClick={() => setPreviewPdfUrl(cert.pdfUrl)}
-                      icon={Eye}
-                    >
-                      Preview
-                    </Button>
-                  </div>
-                </div>
-
-                <h3 className="text-sm font-extrabold text-white truncate font-display">{cert.recipientName}</h3>
-                <p className="text-xs text-gray-400 font-mono truncate">{cert.recipientEmail}</p>
-              </div>
-
-              <div className="pt-3 border-t border-[#27272a] flex items-center justify-between">
-                <span className="text-[10px] text-gray-500 font-mono">
-                  {cert.fileSize ? `${Math.round(cert.fileSize / 1024)} KB` : 'PDF'}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPreviewPdfUrl(cert.pdfUrl)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Preview Certificate"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <a
-                    href={cert.pdfUrl}
-                    download
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-[#ef4444] hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Download Certificate PDF"
-                  >
-                    <Download className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-            </Card>
+              certificate={cert}
+              onPreview={(url) => setPreviewPdfUrl(url)}
+            />
           ))}
         </div>
       ) : (

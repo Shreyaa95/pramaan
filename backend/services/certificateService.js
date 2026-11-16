@@ -127,7 +127,7 @@ async function generateCertificatePdf({
       borderWidth: 2
     });
 
-    // Elegant Crimson Accent inner border (inspired by The Uniques identity)
+    // Elegant Crimson Accent inner border (inspired by Global Credential identity)
     page.drawRectangle({
       x: 28,
       y: 28,

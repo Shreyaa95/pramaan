@@ -13,6 +13,8 @@ import { DeliveriesView } from './views/DeliveriesView';
 import { SettingsView } from './views/SettingsView';
 import { PublicCertificateView } from './views/PublicCertificateView';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { CommandPalette } from './components/common/CommandPalette';
+import { QuickVerifierModal } from './components/common/QuickVerifierModal';
 import { api } from './services/api';
 
 export default function App() {
@@ -27,6 +29,25 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [activeEvent, setActiveEvent] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [quickVerifyOpen, setQuickVerifyOpen] = useState(false);
+  const [verifyInitialId, setVerifyInitialId] = useState('');
+
+  useEffect(() => {
+    const handleToggleCmd = () => setCommandPaletteOpen(prev => !prev);
+    const handleOpenVerify = (e) => {
+      if (e.detail?.certificateId) {
+        setVerifyInitialId(e.detail.certificateId);
+      }
+      setQuickVerifyOpen(true);
+    };
+    window.addEventListener('toggle-command-palette', handleToggleCmd);
+    window.addEventListener('open-quick-verify', handleOpenVerify);
+    return () => {
+      window.removeEventListener('toggle-command-palette', handleToggleCmd);
+      window.removeEventListener('open-quick-verify', handleOpenVerify);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -84,6 +105,35 @@ export default function App() {
         onSelectEvent={setActiveEvent}
         mobileMenuOpen={mobileMenuOpen}
         onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
+        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+        onOpenQuickVerify={() => {
+          setVerifyInitialId('');
+          setQuickVerifyOpen(true);
+        }}
+      />
+
+      {/* Global Interactive Command Palette (Ctrl+K) */}
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigate={(tab) => {
+          setCurrentTab(tab);
+          setCommandPaletteOpen(false);
+        }}
+        events={events}
+        activeEvent={activeEvent}
+        onSelectEvent={setActiveEvent}
+        onOpenQuickVerify={() => {
+          setVerifyInitialId('');
+          setQuickVerifyOpen(true);
+        }}
+      />
+
+      {/* Cryptographic Instant Verifier Modal */}
+      <QuickVerifierModal
+        isOpen={quickVerifyOpen}
+        onClose={() => setQuickVerifyOpen(false)}
+        initialCertId={verifyInitialId}
       />
 
       {/* Main App Layout */}

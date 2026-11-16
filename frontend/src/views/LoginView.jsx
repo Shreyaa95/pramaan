@@ -4,10 +4,12 @@ import { Button } from '../components/common/Button';
 import { BrandLogo } from '../components/common/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useBranding } from '../context/BrandingContext';
 
 export function LoginView() {
   const { login } = useAuth();
   const { showToast } = useToast();
+  const { tagline } = useBranding();
 
   const [email, setEmail] = useState('admin@smartcert.io');
   const [password, setPassword] = useState('admin123');
@@ -45,7 +47,7 @@ export function LoginView() {
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ca0019]/15 border border-[#ca0019]/35 text-[10px] uppercase font-extrabold tracking-wider text-[#ef4444] mt-2">
             <Sparkles className="w-3 h-3" />
-            The Uniques Ecosystem &bull; Enterprise Console
+            {tagline} &bull; Enterprise Console
           </div>
         </div>
 

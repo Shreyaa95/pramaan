@@ -8,6 +8,7 @@ const {
   sendCertificateEmail,
   clearTransporterCache
 } = require('../services/emailService');
+const { generateCertificatePdf } = require('../services/certificateService');
 
 // POST /api/email/send-bulk/:eventId - Send certificates to all generated recipients in event
 router.post('/send-bulk/:eventId', requireAuth, async (req, res) => {
@@ -538,6 +539,286 @@ router.post('/verify-smtp', requireAuth, async (req, res) => {
     } else {
       return res.status(400).json({ success: false, error: result.error });
     }
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/email/instant-dispatch - Direct single-certificate issue & email dispatch for extension
+router.post('/instant-dispatch', async (req, res) => {
+  try {
+    let { eventId, name, email, role, subject, message } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ success: false, error: 'Recipient name and recipient email are required.' });
+    }
+
+    const recipientEmail = String(email).trim().toLowerCase();
+    const recipientName = String(name).trim();
+
+    // 1. Resolve target event
+    let event = null;
+    if (eventId) {
+      event = await db.events.findOne({ _id: eventId });
+    }
+    if (!event) {
+      const allEvents = await db.events.find({});
+      if (allEvents.length > 0) {
+        event = allEvents[allEvents.length - 1]; // latest event
+      }
+    }
+    if (!event) {
+      return res.status(400).json({ success: false, error: 'No active batch found. Please initialize an event batch first.' });
+    }
+
+    // 2. Resolve template
+    let template = null;
+    if (event.templateId) {
+      template = await db.templates.findOne({ _id: event.templateId });
+    }
+    if (!template) {
+      template = await db.templates.findOne({ isDefault: true });
+    }
+    if (!template) {
+      const allTemplates = await db.templates.find({});
+      if (allTemplates.length > 0) template = allTemplates[0];
+    }
+    if (!template) {
+      return res.status(400).json({ success: false, error: 'No certificate template found for this event.' });
+    }
+
+    // 3. Resolve or create recipient
+    let recipient = await db.recipients.findOne({ email: recipientEmail, eventId: event._id });
+    if (!recipient) {
+      const count = await db.recipients.count({ eventId: event._id });
+      const paddedSeq = String(count + 1).padStart(4, '0');
+      const recipientId = `REC-${event.certificatePrefix || 'CERT'}-${paddedSeq}`;
+      recipient = await db.recipients.insert({
+        recipientId,
+        eventId: event._id,
+        name: recipientName,
+        email: recipientEmail,
+        extraData: { role: role || 'Certificate Recipient' },
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      });
+    } else {
+      await db.recipients.update(
+        { _id: recipient._id },
+        { 
+          $set: { 
+            name: recipientName,
+            'extraData.role': role || recipient.extraData?.role || 'Certificate Recipient'
+          }
+        }
+      );
+      recipient.name = recipientName;
+    }
+
+    // 4. Generate or retrieve personalized vector PDF certificate
+    let certDoc = await db.certificates.findOne({ recipientId: recipient.recipientId, eventId: event._id });
+    let certificateId = certDoc ? certDoc.certificateId : null;
+
+    if (!certificateId) {
+      const certCount = await db.certificates.count({ eventId: event._id });
+      const year = new Date().getFullYear();
+      const padded = String(certCount + 1).padStart(4, '0');
+      certificateId = `${event.certificatePrefix || 'CERT'}-${year}-${padded}`;
+    }
+
+    const generated = await generateCertificatePdf({
+      template,
+      event,
+      recipient,
+      certificateId
+    });
+
+    const certRecord = {
+      certificateId: generated.certificateId,
+      eventId: event._id,
+      recipientId: recipient.recipientId,
+      recipientName: recipient.name,
+      recipientEmail: recipient.email,
+      fileName: generated.fileName,
+      filePath: generated.filePath,
+      pdfUrl: generated.pdfUrl,
+      fileSize: generated.fileSize,
+      status: 'generated',
+      generatedAt: new Date().toISOString()
+    };
+
+    if (certDoc) {
+      await db.certificates.update({ _id: certDoc._id }, certRecord);
+      certRecord._id = certDoc._id;
+    } else {
+      certRecord._id = await db.certificates.insert(certRecord);
+    }
+
+    // 5. Override email config if custom subject/message is passed
+    const dispatchEvent = {
+      ...event,
+      emailConfig: {
+        ...event.emailConfig,
+        subject: subject || event.emailConfig?.subject || `Your Official Certificate – ${event.name}`,
+        body: message || event.emailConfig?.body || `Hi {{recipientName}},\n\nYour official certificate for ${event.name} has been generated and is attached to this email.\n\nCertificate ID: {{certificateId}}\n\nWarm regards,\n${event.organizationName || 'Global Certification Authority'}`
+      }
+    };
+
+    // 6. Deliver email immediately via Nodemailer
+    const sendResult = await sendCertificateEmail({
+      event: dispatchEvent,
+      recipient,
+      certificate: certRecord
+    });
+
+    // 7. Audit delivery record
+    const deliveryRecord = {
+      eventId: event._id,
+      certificateId: certRecord.certificateId,
+      recipientId: recipient.recipientId,
+      recipientName: recipient.name,
+      recipientEmail: recipient.email,
+      status: 'sent',
+      messageId: sendResult.messageId,
+      previewUrl: sendResult.previewUrl || null,
+      isTest: !!sendResult.isTest,
+      sentAt: new Date().toISOString(),
+      errorMessage: null,
+      retryCount: 0
+    };
+
+    const existingDelivery = await db.emailDeliveries.findOne({ recipientId: recipient.recipientId, eventId: event._id });
+    if (existingDelivery) {
+      await db.emailDeliveries.update({ _id: existingDelivery._id }, deliveryRecord);
+    } else {
+      await db.emailDeliveries.insert(deliveryRecord);
+    }
+
+    await db.certificates.update({ _id: certRecord._id }, { status: 'sent' });
+    await db.recipients.update({ _id: recipient._id }, { status: 'sent' });
+
+    return res.json({
+      success: true,
+      message: `Certificate successfully sent to ${recipient.email}!`,
+      certificateId: certRecord.certificateId,
+      recipientName: recipient.name,
+      recipientEmail: recipient.email,
+      pdfUrl: certRecord.pdfUrl,
+      previewUrl: sendResult.previewUrl || null,
+      isTest: !!sendResult.isTest,
+      messageId: sendResult.messageId,
+      eventName: event.name,
+      sentAt: deliveryRecord.sentAt
+    });
+  } catch (err) {
+    console.error('Instant dispatch error:', err);
+    return res.status(500).json({
+      success: false,
+      error: `Failed to deliver certificate email: ${err.message}`
+    });
+  }
+});
+
+// POST /api/email/instant-batch-dispatch/:eventId - Send certificates for all pending recipients in batch
+router.post('/instant-batch-dispatch/:eventId', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const event = await db.events.findOne({ _id: eventId });
+    if (!event) {
+      return res.status(404).json({ success: false, error: 'Event not found.' });
+    }
+
+    let template = await db.templates.findOne({ _id: event.templateId });
+    if (!template) template = await db.templates.findOne({ isDefault: true });
+
+    const recipients = await db.recipients.find({ eventId });
+    if (recipients.length === 0) {
+      return res.status(400).json({ success: false, error: 'No recipients found in this batch.' });
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const results = [];
+
+    for (let recipient of recipients) {
+      try {
+        // 1. Ensure certificate exists
+        let certDoc = await db.certificates.findOne({ recipientId: recipient.recipientId, eventId });
+        if (!certDoc) {
+          const certCount = await db.certificates.count({ eventId });
+          const year = new Date().getFullYear();
+          const padded = String(certCount + 1).padStart(4, '0');
+          const certificateId = `${event.certificatePrefix || 'CERT'}-${year}-${padded}`;
+
+          const generated = await generateCertificatePdf({
+            template,
+            event,
+            recipient,
+            certificateId
+          });
+
+          certDoc = {
+            certificateId: generated.certificateId,
+            eventId,
+            recipientId: recipient.recipientId,
+            recipientName: recipient.name,
+            recipientEmail: recipient.email,
+            fileName: generated.fileName,
+            filePath: generated.filePath,
+            pdfUrl: generated.pdfUrl,
+            fileSize: generated.fileSize,
+            status: 'generated',
+            generatedAt: new Date().toISOString()
+          };
+          certDoc._id = await db.certificates.insert(certDoc);
+        }
+
+        // 2. Send email
+        const sendResult = await sendCertificateEmail({
+          event,
+          recipient,
+          certificate: certDoc
+        });
+
+        // 3. Log delivery
+        const deliveryRecord = {
+          eventId,
+          certificateId: certDoc.certificateId,
+          recipientId: recipient.recipientId,
+          recipientName: recipient.name,
+          recipientEmail: recipient.email,
+          status: 'sent',
+          messageId: sendResult.messageId,
+          previewUrl: sendResult.previewUrl || null,
+          isTest: !!sendResult.isTest,
+          sentAt: new Date().toISOString(),
+          errorMessage: null
+        };
+
+        const existing = await db.emailDeliveries.findOne({ recipientId: recipient.recipientId, eventId });
+        if (existing) {
+          await db.emailDeliveries.update({ _id: existing._id }, deliveryRecord);
+        } else {
+          await db.emailDeliveries.insert(deliveryRecord);
+        }
+
+        await db.certificates.update({ _id: certDoc._id }, { status: 'sent' });
+        await db.recipients.update({ _id: recipient._id }, { status: 'sent' });
+
+        sentCount++;
+        results.push({ email: recipient.email, status: 'sent', previewUrl: sendResult.previewUrl });
+      } catch (itemErr) {
+        failedCount++;
+        results.push({ email: recipient.email, status: 'failed', error: itemErr.message });
+      }
+    }
+
+    return res.json({
+      success: true,
+      message: `Batch dispatch completed: ${sentCount} sent, ${failedCount} failed.`,
+      sentCount,
+      failedCount,
+      results
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }

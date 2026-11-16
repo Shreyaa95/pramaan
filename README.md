@@ -2,7 +2,7 @@
 
 > **प्रमाणपत्र निर्माण एवं वितरण मंच**  
 > **Configuration-Driven • Collision-Safe • Deterministic Recipient Linkage**  
-> Visual design and creative direction inspired by **The Uniques** community ecosystem (deep carbon surfaces, obsidian glass panels, crimson accents `#ca0019`, and crisp typography).
+> Global Enterprise Design System (deep carbon surfaces, obsidian glass panels, crimson accents `#ca0019`, and crisp typography).
 
 ---
 

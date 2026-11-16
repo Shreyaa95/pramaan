@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'smartcert-jwt-secret-key-2026-uniques';
+const JWT_SECRET = process.env.JWT_SECRET || 'smartcert-jwt-secret-key-2026-global';
 
 function requireAuth(req, res, next) {
   try {

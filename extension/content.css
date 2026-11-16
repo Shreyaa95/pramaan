@@ -1,0 +1,42 @@
+/* PRAMAAN In-Page Floating Quick Verify Chip */
+.pramaan-floating-chip {
+  position: absolute;
+  z-index: 9999999;
+  background: #0e0e12;
+  border: 1px solid #ca0019;
+  border-radius: 20px;
+  padding: 4px 10px;
+  box-shadow: 0 4px 15px rgba(202, 0, 25, 0.45);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+}
+
+.pramaan-floating-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(202, 0, 25, 0.65);
+}
+
+.pramaan-chip-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.pramaan-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  display: inline-block;
+}
+
+.pramaan-chip-title strong {
+  color: #ef4444;
+  font-family: monospace;
+}

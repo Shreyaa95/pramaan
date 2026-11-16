@@ -16,7 +16,7 @@
     "nodemailer",
     "pdf-lib",
     "mongodb",
-    "the-uniques"
+    "global-credentials"
   ],
   "author": "PRAMAAN Team",
   "license": "ISC"

@@ -233,3 +233,32 @@ body::before {
 .btn-shimmer:hover::after {
   left: 140%;
 }
+
+/* Hologram & Creative UI Utilities */
+.hologram-card {
+  transition: transform 0.15s ease-out, box-shadow 0.25s ease;
+  will-change: transform;
+}
+
+.shadow-glow-crimson {
+  box-shadow: 0 0 20px -3px rgba(202, 0, 25, 0.5);
+}
+
+.shadow-glow-emerald {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.45);
+}
+
+.ambient-aura {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  pointer-events: none;
+  opacity: 0.25;
+  animation: pulseAura 8s ease-in-out infinite alternate;
+}
+
+@keyframes pulseAura {
+  0% { transform: scale(0.9) translate(0, 0); opacity: 0.2; }
+  50% { transform: scale(1.1) translate(15px, -10px); opacity: 0.35; }
+  100% { transform: scale(0.95) translate(-10px, 10px); opacity: 0.25; }
+}

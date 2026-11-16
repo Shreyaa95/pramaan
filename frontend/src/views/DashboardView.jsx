@@ -16,16 +16,21 @@ import {
   CalendarDays,
   LayoutTemplate,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Search,
+  Globe,
+  Command
 } from 'lucide-react';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Badge } from '../components/common/Badge';
 import { api } from '../services/api';
 import { useToast } from '../context/ToastContext';
+import { useBranding } from '../context/BrandingContext';
 
 export function DashboardView({ onNavigate, onSelectEvent }) {
   const { showToast } = useToast();
+  const { tagline } = useBranding();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
@@ -97,7 +102,7 @@ export function DashboardView({ onNavigate, onSelectEvent }) {
         <div className="relative z-10 max-w-2xl space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ca0019]/15 border border-[#ca0019]/35 text-[#ef4444] text-xs font-bold tracking-wide">
             <span className="w-2 h-2 rounded-full bg-[#ef4444] pulse-beacon" />
-            <span>The Uniques Ecosystem &bull;</span>
+            <span>{tagline} &bull;</span>
             <span className="font-extrabold text-[#ff4d64]" style={{ fontFamily: "'Rozha One', serif" }}>प्र</span>
             <span className="text-white font-extrabold tracking-[0.14em] font-display">MAAN</span>
             <span className="text-[10px] bg-red-950/60 px-1.5 py-0.5 rounded text-red-300 font-mono">CORE</span>
@@ -135,6 +140,50 @@ export function DashboardView({ onNavigate, onSelectEvent }) {
             >
               Visual Template Studio
             </Button>
+          </div>
+
+          {/* Instant Cryptographic Verifier Bar inside Hero */}
+          <div className="pt-4 max-w-lg">
+            <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#09090b]/90 border border-white/10 hover:border-[#ca0019]/50 transition-colors shadow-lg">
+              <div className="pl-2.5 text-[#ef4444]">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <input
+                type="text"
+                id="hero-verify-input"
+                placeholder="Quick-verify Certificate ID (e.g. IJ26-2026-0001)..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.target.value.trim()) {
+                    window.dispatchEvent(
+                      new CustomEvent('open-quick-verify', {
+                        detail: { certificateId: e.target.value.trim() }
+                      })
+                    );
+                    e.target.value = '';
+                  }
+                }}
+                className="flex-1 bg-transparent text-xs text-white placeholder-gray-500 focus:outline-none font-mono py-1"
+              />
+              <Button
+                size="xs"
+                variant="accent"
+                onClick={() => {
+                  const input = document.getElementById('hero-verify-input');
+                  if (input && input.value.trim()) {
+                    window.dispatchEvent(
+                      new CustomEvent('open-quick-verify', {
+                        detail: { certificateId: input.value.trim() }
+                      })
+                    );
+                    input.value = '';
+                  } else {
+                    window.dispatchEvent(new CustomEvent('open-quick-verify', { detail: {} }));
+                  }
+                }}
+              >
+                Verify
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -238,7 +287,46 @@ export function DashboardView({ onNavigate, onSelectEvent }) {
         </div>
       </div>
 
-      {/* Failed Deliveries Alert Banner (if any) */}
+      {/* Browser Extension Announcement & Feature Showcase */}
+      <div className="relative rounded-3xl overflow-hidden p-6 bg-gradient-to-r from-[#121217] via-[#16161c] to-[#0f0f13] border border-[#27272a] shadow-xl flex flex-wrap items-center justify-between gap-6 hover:border-[#ca0019]/40 transition-colors">
+        <div className="flex items-center gap-4 max-w-xl">
+          <div className="w-12 h-12 rounded-2xl bg-[#ca0019]/20 border border-[#ca0019]/40 flex items-center justify-center text-[#ef4444] shrink-0 shadow-glow-crimson">
+            <Globe className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[#ca0019]/15 text-[#ef4444] text-[10px] font-extrabold uppercase tracking-wider mb-1">
+              Browser Extension Integration
+            </div>
+            <h3 className="text-base font-extrabold text-white font-display">
+              PRAMAAN Web Extension Ready for Chrome, Edge & Brave
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Verify credentials instantly, inspect certificate IDs across spreadsheets and web forms, and trigger dispatches right from your browser toolbar.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('open-quick-verify', { detail: {} }));
+            }}
+            icon={ShieldCheck}
+          >
+            Open Verifier
+          </Button>
+          <Button
+            size="sm"
+            variant="accent"
+            onClick={() => onNavigate('settings')}
+            icon={ArrowRight}
+          >
+            Extension Guide & API
+          </Button>
+        </div>
+      </div>
       {failedAlerts.length > 0 && (
         <div className="p-5 rounded-2xl bg-gradient-to-r from-red-950/40 via-[#18181b] to-red-950/40 border border-[#ca0019]/50 flex flex-wrap items-center justify-between gap-4 animate-scaleIn shadow-xl">
           <div className="flex items-center gap-3.5">

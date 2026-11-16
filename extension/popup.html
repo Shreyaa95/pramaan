@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRAMAAN Certificate & Email Companion</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Top Laser Beam Indicator -->
+  <div class="laser-beam"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-crest">
+        <span class="brand-devanagari">प्र</span>
+      </div>
+      <div class="brand-text">
+        <div class="brand-name">
+          <span class="brand-accent">प्र</span>MAAN
+        </div>
+        <div class="brand-sub">DIRECT EMAIL DISPATCHER</div>
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div id="backendStatus" class="status-badge status-checking" title="Backend Connection Status">
+        <span class="beacon"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+      <button id="openWebBtn" class="icon-btn" title="Open Full Web Dashboard (Optional)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <line x1="10" y1="14" x2="21" y2="3"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs (Email First!) -->
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tab-mail">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+      <span>Email Cert</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-batch">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+      </svg>
+      <span>Batch Mail</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-verify">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+      </svg>
+      <span>Verify ID</span>
+    </button>
+    <button class="tab-btn" data-tab="tab-config">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+      </svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Main Views Container -->
+  <main class="content">
+    <!-- TAB 1: INSTANT SINGLE-CLICK EMAIL DISPATCHER (PRIMARY) -->
+    <section id="tab-mail" class="tab-pane active">
+      <div class="pane-intro">
+        <span class="section-tag">Direct Email Dispatcher</span>
+        <h3>Send Certificate by Email</h3>
+        <p>Issues personalized vector PDF & sends via Nodemailer directly from this popup.</p>
+      </div>
+
+      <form id="mailDispatchForm" class="quick-form">
+        <div class="form-group">
+          <label for="mailEventSelect">Target Batch / Event</label>
+          <select id="mailEventSelect" required>
+            <option value="">Loading events...</option>
+          </select>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="mailRecipientName">Recipient Name</label>
+            <input
+              type="text"
+              id="mailRecipientName"
+              placeholder="e.g. Rahul Sharma"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="mailRecipientEmail">Recipient Email</label>
+            <input
+              type="email"
+              id="mailRecipientEmail"
+              placeholder="e.g. rahul@example.com"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="mailRole">Achievement / Role (Optional)</label>
+          <input
+            type="text"
+            id="mailRole"
+            placeholder="e.g. Excellence Award, Participant, Winner"
+          />
+        </div>
+
+        <!-- Custom Email Message Toggle -->
+        <div class="expandable-section">
+          <button type="button" id="toggleCustomMsg" class="text-toggle-btn">
+            <span>+ Customize Email Subject & Message</span>
+          </button>
+          <div id="customMsgBox" class="hidden space-y-2 mt-2">
+            <input
+              type="text"
+              id="mailCustomSubject"
+              placeholder="Custom Subject (leave blank for event default)"
+              class="sub-input"
+            />
+            <textarea
+              id="mailCustomBody"
+              rows="2"
+              placeholder="Custom message body (supports {{recipientName}}, {{certificateId}})"
+              class="sub-textarea"
+            ></textarea>
+          </div>
+        </div>
+
+        <button type="submit" id="mailSubmitBtn" class="btn btn-crimson btn-block btn-lg">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          <span>Generate & Send Certificate via Email</span>
+        </button>
+      </form>
+
+      <!-- Dispatch Progress Loader -->
+      <div id="mailLoading" class="loader-box hidden">
+        <div class="spinner"></div>
+        <div class="loader-text">
+          <strong id="mailProgressStep">Generating PDF Certificate...</strong>
+          <span>Connecting to Nodemailer SMTP relay</span>
+        </div>
+      </div>
+
+      <!-- Dispatch Error Alert -->
+      <div id="mailError" class="alert-box alert-error hidden">
+        <span id="mailErrorMsg">Delivery failed. Check SMTP configuration.</span>
+      </div>
+
+      <!-- Dispatch Success Card -->
+      <div id="mailSuccessCard" class="result-card hidden animate-scaleIn">
+        <div class="card-glow"></div>
+        <div class="result-header">
+          <div class="verified-pill text-emerald">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>EMAIL DISPATCHED SUCCESSFULLY</span>
+          </div>
+          <span id="mailResultCertId" class="cert-id-tag">ID</span>
+        </div>
+
+        <div class="result-body">
+          <div class="meta-row">
+            <span class="label">Delivered To</span>
+            <div id="mailResultEmail" class="val-primary truncate">recipient@example.com</div>
+          </div>
+          <div class="meta-grid">
+            <div>
+              <span class="label">Recipient Name</span>
+              <div id="mailResultName" class="val-secondary truncate">Name</div>
+            </div>
+            <div>
+              <span class="label">Event / Program</span>
+              <div id="mailResultEvent" class="val-secondary truncate">Event</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button id="mailPreviewEmailBtn" class="btn btn-crimson btn-sm flex-1 hidden">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            Preview Sent Email
+          </button>
+          <button id="mailViewPdfBtn" class="btn btn-primary btn-sm flex-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+            View PDF
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: BATCH DISPATCH & RETRY (BULK DISPATCH FROM EXTENSION) -->
+    <section id="tab-batch" class="tab-pane">
+      <div class="pane-intro">
+        <span class="section-tag">Batch Delivery Engine</span>
+        <h3>Bulk Email Dispatch</h3>
+        <p>Trigger dispatches and retries for entire batches without opening the dashboard.</p>
+      </div>
+
+      <div class="form-group mb-3">
+        <label for="batchEventSelect">Select Active Batch</label>
+        <select id="batchEventSelect">
+          <option value="">Loading batches...</option>
+        </select>
+      </div>
+
+      <!-- Batch Stats Summary -->
+      <div class="stats-grid mb-3">
+        <div class="stat-card">
+          <div class="stat-num" id="batchTotalRecipients">0</div>
+          <div class="stat-label">Recipients</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num text-emerald" id="batchSentCount">0</div>
+          <div class="stat-label">Sent</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num text-crimson" id="batchFailedCount">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+
+      <div class="space-y-2">
+        <button id="batchDispatchBtn" class="btn btn-crimson btn-block">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 2 15 22 11 13 2 9 22 2"></polyline>
+          </svg>
+          Dispatch All Certificates in Batch
+        </button>
+
+        <button id="batchRetryBtn" class="btn btn-outline btn-block">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Retry Failed Deliveries Only
+        </button>
+      </div>
+
+      <!-- Batch Action Status Result -->
+      <div id="batchLoading" class="loader-box hidden mt-3">
+        <div class="spinner"></div>
+        <span id="batchProgressText">Dispatching emails to batch recipients...</span>
+      </div>
+
+      <div id="batchResultAlert" class="alert-box alert-success hidden mt-3">
+        <span id="batchResultMsg">Batch dispatch completed!</span>
+      </div>
+    </section>
+
+    <!-- TAB 3: VERIFY CERTIFICATE -->
+    <section id="tab-verify" class="tab-pane">
+      <div class="pane-intro">
+        <span class="section-tag">Tamper-Proof Verification</span>
+        <h3>Cryptographic ID Check</h3>
+        <p>Instant deterministic validation against official ledger records.</p>
+      </div>
+
+      <div class="search-box">
+        <div class="input-wrap">
+          <svg class="input-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            id="verifyInput"
+            placeholder="e.g. G26-2026-0001 or CERT-..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+        <button id="verifyBtn" class="btn btn-crimson">Verify</button>
+      </div>
+
+      <div id="verifyLoading" class="loader-box hidden">
+        <div class="spinner"></div>
+        <span>Authenticating record...</span>
+      </div>
+
+      <div id="verifyError" class="alert-box alert-error hidden">
+        <span id="verifyErrorMsg">Certificate record not found.</span>
+      </div>
+
+      <div id="verifyResult" class="result-card hidden">
+        <div class="card-glow"></div>
+        <div class="result-header">
+          <div class="verified-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>OFFICIAL RECORD VERIFIED</span>
+          </div>
+          <span id="resCertId" class="cert-id-tag">ID</span>
+        </div>
+
+        <div class="result-body">
+          <div class="meta-row">
+            <span class="label">Recipient Name</span>
+            <div id="resName" class="val-primary">--</div>
+          </div>
+          <div class="meta-grid">
+            <div>
+              <span class="label">Event / Program</span>
+              <div id="resEvent" class="val-secondary">--</div>
+            </div>
+            <div>
+              <span class="label">Issued Date</span>
+              <div id="resDate" class="val-secondary">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button id="viewPdfBtn" class="btn btn-primary btn-sm flex-1">View PDF</button>
+          <button id="copyLinkBtn" class="btn btn-outline btn-sm">Copy Link</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS & CONNECTION -->
+    <section id="tab-config" class="tab-pane">
+      <div class="pane-intro">
+        <span class="section-tag">API Endpoint & Telemetry</span>
+        <h3>Platform Settings</h3>
+        <p>Connect this extension to your PRAMAAN server or cloud instance.</p>
+      </div>
+
+      <div class="config-box">
+        <div class="form-group">
+          <label for="cfgApiBase">PRAMAAN API Base URL</label>
+          <input type="url" id="cfgApiBase" value="http://localhost:5000/api" spellcheck="false" />
+          <span class="help-text">Default local development: http://localhost:5000/api</span>
+        </div>
+
+        <div class="btn-row">
+          <button id="cfgTestBtn" class="btn btn-outline">Test Connection</button>
+          <button id="cfgSaveBtn" class="btn btn-primary">Save Settings</button>
+        </div>
+
+        <div id="cfgFeedback" class="feedback-msg hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-brand">PRAMAAN &bull; Direct Email Companion</div>
+    <div class="footer-version">v1.1.0 (MV3)</div>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
